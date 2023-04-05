@@ -144,7 +144,7 @@ When you execute `run`, a vector in an atom is populated with each individual ru
     ...
 ```
 
-Then after some preprocessing magic, this is the end result:
+Then after some post-processing magic, this is the end result:
 
 ```clojure
 ["t/A"
