@@ -43,40 +43,21 @@
     ~body))
 
 
-(defn reference-depth [ref]
-  (count (filter uuid? ref)))
-
-#_(reference-depth [nil
-                  #uuid "0157e763-ea43-4944-ae04-723db85571df"
-                  #uuid "2b486994-e108-427e-87ad-a841521d9609"
-                  :onesearch-index-builder.service.property-service/process-batch])
-
 (defn get-all-children
   "get children or returns nil"
-  [v v-list]
+  [parent-ref ordered-list]
   (let [ref-uuid-fn #(->> % (filter uuid?))
-        ref (ref-uuid-fn v)
-        c (count ref)]
-    (not-empty (filter (fn [[curr-v _]]
-                         (and (= ref (take c (ref-uuid-fn curr-v)))
-                              (not (= ref (ref-uuid-fn curr-v) )))) v-list))))
+        parent-ref-uuids (ref-uuid-fn parent-ref)
+        c (count parent-ref-uuids)]
+    (not-empty
+     (filter (fn [[curr-ref _]]
+               (and (= parent-ref-uuids (take c (ref-uuid-fn curr-ref)))
+                    (not (= parent-ref-uuids (ref-uuid-fn curr-ref))))) ordered-list))))
 
-(defn skim-top-level [l]
-  (when l
-    (let [c (-> l ffirst count)]
-     (filter #(= c (-> % first count)) l))))
-
-#_(skim-top-level
- (get-all-children [nil
-                    #uuid "aa4231a7-8468-4d46-91d0-99a176e68ea2"
-                    #uuid "2b486994-e108-427e-87ad-a841521d9609"
-                    #uuid "8d599924-3ae7-4582-95d7-751e0251559a"
-                    :onesearch-index-builder.service.property-service/process-units-required]
-                   sorted-list-by-level))
-
-
-;; 5 - if there are children, put them into the vector
-
+(defn skim-top-level [ordered-list]
+  (when ordered-list
+    (let [c (-> ordered-list ffirst count)]
+     (filter #(= c (-> % first count)) ordered-list))))
 
 (defn format-2dec
   [v]
@@ -96,7 +77,7 @@
                           (map #(->> % str (take 2) (apply str))))))))
 
 
-(ref->unique-fn-name
+#_(ref->unique-fn-name
  [nil
   #uuid "0157e763-ea43-4944-ae04-723db85571df"
   #uuid "2b486994-e108-427e-87ad-a841521d9609"
@@ -110,43 +91,60 @@
   (format-2dec (/ (/ time-secs 1000) 60)))
 
 (defn sort-the-rest
-  [v-list tt]
-  (let [top-level (-> v-list skim-top-level)]
+  [ordered-list total-exec-time]
+  (let [top-level (skim-top-level ordered-list)]
     (map (fn [[each-top-level-ref each-top-level-time]]
-           (let [children (get-all-children each-top-level-ref v-list)
+           (let [children (get-all-children each-top-level-ref ordered-list)
                  fn-unique-name (ref->unique-fn-name each-top-level-ref)
-                 percentage (calc-percentage each-top-level-time tt)
+                 percentage (calc-percentage each-top-level-time total-exec-time)
                  children-time (apply + (map last (skim-top-level children)))
-                 time-other (calc-percentage (- each-top-level-time children-time) tt)]
+                 time-other (calc-percentage (- each-top-level-time children-time) total-exec-time)]
              (if children
                (into
                 [fn-unique-name percentage
-                   ["other" time-other]] (sort-the-rest children tt))
+                   ["other" time-other]] (sort-the-rest children total-exec-time))
                [fn-unique-name
                 percentage]))) top-level)))
 
-(defn postprocess-2
-  [postprocessed]
-  (let [sorted-list-by-depth
-        (sort-by #(-> % first reference-depth) postprocessed)
-        top-level-data (first sorted-list-by-depth)
+(defn reference-depth [ref]
+  (count (filter uuid? ref)))
+
+(defn order-by-depth [grouped-times]
+  (sort-by #(-> % first reference-depth) grouped-times))
+
+(defn sum-times-and-group-by-ref-ordered
+  "sums all times and groups by reference preserving order"
+  [times]
+  (order-by-depth
+   (loop [[[ref time] & rest-times] times
+          aux-ref-map {}
+          result []]
+     (cond
+       (not ref) result
+
+       (aux-ref-map ref)
+       (recur rest-times
+              aux-ref-map
+              (update-in result [(get aux-ref-map ref) 1] + time))
+       :else (recur rest-times
+                    (assoc aux-ref-map ref (count aux-ref-map))
+                    (conj result [ref time]))))))
+
+
+(defn post-process
+  []
+  (let [ordered-times (sum-times-and-group-by-ref-ordered @times)
+        top-level-data (first ordered-times)
         total-time (-> top-level-data last)
         final-output (into [(-> top-level-data first ref->unique-fn-name)
                             (secs->min total-time)]
-                           (sort-the-rest (rest sorted-list-by-depth)
+                           (sort-the-rest (rest ordered-times)
                                           total-time))]
     final-output))
 
-(comment (clojure.pprint/pprint (postprocess-2 postprocessed))
- (postprocess-2 postprocessed))
 
-(defn postprocess
-  []
-  (postprocess-2 (->> (group-by first @times)
-                      (map (fn [[ref everything]]
-                             [ref (->> everything
-                                       (map last)
-                                       (reduce +))])))))
 
+#_(comment (clojure.pprint/pprint (postprocess-2 postprocessed))
+           (postprocess-2 postprocessed))
 
 #_(ddiff/pretty-print  (ddiff/diff result-d65de4e results-batch-25))

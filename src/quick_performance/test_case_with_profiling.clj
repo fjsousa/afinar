@@ -2,11 +2,9 @@
   (:require [quick-performance.core :refer [ctx defn-t times]]))
 
 (defn-t C [data-partition]
-  (println "Function C called with" (count data-partition) "elements")
   (Thread/sleep 500))
 
 (defn-t D [x]
-  (println "Function D called with" x)
   (Thread/sleep 1000) ; Sleep for 1 second
   )
 
@@ -33,10 +31,38 @@
 ;; |    D    | <     |    C    |
 ;; +---------+       +---------+
 
-(defn run
-  "I don't do a whole lot."
-  [& _]
-  (A (range 20))
-  (clojure.pprint/pprint @times))
 
-(run)
+;; this happens twice
+
+;; A -> D x5
+
+;; D 5 secs
+;; A 5 secs
+
+;; foo branch
+;; A -> B -> C
+
+;; C .5 secs
+;; B .5 secs
+;; A .5 secs
+
+;; bar branch
+;; A -> B -> D x5
+
+;; D 5 secs
+;; B 5 secs
+;; A 5 secs
+
+;;
+;; A      = 2 x (5 + .5 + 5) = 21 secs
+;; B foo  = 2 x .5 = 1 sec
+;; B bar  = 2 x 5 = 10 secs
+;; C      = 2 x (.5) = 1 sec
+;; D main = 2 x 5 = 10 secs
+;; D bar  = 2 x 5 = 10 secs
+
+(defn run
+  [& _]
+  (reset! times [])
+  (A (range 10))
+  (clojure.pprint/pprint @times))
