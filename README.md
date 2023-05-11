@@ -1,6 +1,6 @@
 # Afinar [WiP]
 
-Just throwing some ideas in here for a clojure performance library. In my last gig, we had a clojure process that would run every day, pull data from a bunch of microservices with different batch size configuration and  build an Elastic Search index. With each new feature added, the process would take more time to complete, and although not critical for the business, we were starting to feel uncomfortable. The team had an intuition about which parts were taking longer and how to teak things, but I wanted an easy way to instrument the code in clojure and track changes. This is what I envisioned.
+Just throwing some ideas in here for a clojure performance library. In my last gig, we had a clojure process that would run every day, pull data from a bunch of microservices with different batch size configuration and  build an Elastic Search index. With each new feature added, the process would take more time to complete, and although not critical for the business, we were starting to feel uncomfortable. The team had an intuition about which parts were taking longer and how to tweak things, but I wanted an easy way to instrument the code in clojure and track changes. This is what I envisioned.
 
 ## The problem
 
