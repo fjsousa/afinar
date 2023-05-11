@@ -158,4 +158,4 @@ Then after some post-processing magic, this is the end result:
 
 ## Why not just flame graphs
 
-Flame graphs give a you lot more information. This approach is easier to setup and there's other advantages for the profiling code to be within the clojure code. Also, the output is a clojure data structure, so you can do whatever you want with it within clojure as well.
+Flame graphs give a you lot more information. This approach is easier to setup and there's other advantages for the profiling code to be with the clojure code. Also, the output is a clojure data structure, so you can do whatever you want with it within clojure as well.
